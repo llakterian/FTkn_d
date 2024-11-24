@@ -4,6 +4,8 @@
 
 A robust implementation for executing and monitoring TRON blockchain transactions with full confirmation tracking.
 
+**IMPORTANT: This project is designed for educational content purposes only. It serves as a learning resource for understanding TRON blockchain transactions.**
+
 ## Features
 
 - Automated transaction processing
@@ -41,6 +43,8 @@ npm install tronweb dotenv
 PRIVATE_KEY=your_tron_wallet_private_key
 RECEIVER_ADDRESS=recipient_tron_address
 AMOUNT=1000000  # Amount in SUN (1 TRX = 1,000,000 SUN)
+TRON_API_KEY=your_tron_api_key
+STUDENT_ADDRESSES=["address1","address2","address3"]
 ```
 
 ## Usage
