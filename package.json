@@ -10,6 +10,7 @@
   "author": "c0bw3b",
   "license": "ISC",
   "dependencies": {
+    "@noble/secp256k1": "^2.1.0",
     "bignumber.js": "^9.1.2",
     "dotenv": "^16.4.5",
     "tronweb": "^5.3.1"

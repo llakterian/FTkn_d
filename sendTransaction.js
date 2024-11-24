@@ -1,5 +1,9 @@
 require('dotenv').config();
 const TronWeb = require('tronweb');
+require('dotenv').config();
+const recipients = JSON.parse(process.env.RECEIVER_ADDRESSES);
+
+
 
 const NETWORK = {
     MAINNET: 'https://api.trongrid.io',
@@ -7,13 +11,38 @@ const NETWORK = {
     NILE: 'https://nile.trongrid.io'
 };
 
+
+const CONTRACT_ABI = [
+    {
+        "constant": false,
+        "inputs": [
+            {
+                "name": "_to",
+                "type": "address"
+            },
+            {
+                "name": "_amount",
+                "type": "uint256"
+            }
+        ],
+        "name": "mint",
+        "outputs": [],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+    }
+];
+
+// Configuration object
 const config = {
     network: NETWORK.SHASTA,
     privateKey: process.env.PRIVATE_KEY,
-    receiverAddress: process.env.RECEIVER_ADDRESS,
-    amount: process.env.AMOUNT || 1000000,
+    contractAddress: process.env.CONTRACT_ADDRESS,
+    mintAmount: process.env.MINT_AMOUNT || '1000000000',
     confirmations: 27
 };
+
+
 
 function initializeTronWeb() {
     return new TronWeb({
@@ -36,7 +65,6 @@ async function waitForConfirmation(tronWeb, txId, blocks = config.confirmations)
     
     while (confirmations < blocks && retries < maxRetries) {
         try {
-            const tx = await tronWeb.trx.getTransaction(txId);
             const txInfo = await tronWeb.trx.getTransactionInfo(txId);
             
             if (txInfo && txInfo.blockNumber) {
@@ -65,21 +93,64 @@ async function waitForConfirmation(tronWeb, txId, blocks = config.confirmations)
     return false;
 }
 
-async function sendTransaction(tronWeb) {
+async function mintTokens(tronWeb) {
+    const contract = await tronWeb.contract(CONTRACT_ABI, config.contractAddress);
+        console.log('Contract initialized successfully');
+        console.log('Contract address:', config.contractAddress);
+        
+        if (!contract) {
+            throw new Error('Contract initialization failed');
+        }
+    const results = [];
+    for (const recipient of recipients) {
+        try {
+            console.log(`\nMinting tokens for ${recipient}`);
+            console.log('Amount:', config.mintAmount);
+            
+            const transaction = await contract.mint(
+                recipient,
+                config.mintAmount
+            ).send({
+                feeLimit: 150000000,
+                callValue: 0
+            });
+
+            console.log('Transaction submitted successfully');
+            console.log('Transaction ID:', transaction);
+            console.log(`TronScan URL: https://shasta.tronscan.org/#/transaction/${transaction}`);
+
+            await waitForConfirmation(tronWeb, transaction);
+            
+            results.push({
+                recipient,
+                txId: transaction,
+                status: 'SUCCESS'
+            });
+        } catch (error) {
+            console.error(`Failed to mint for ${recipient}:`, error);  // Remove .message
+            results.push({
+                recipient,
+                status: 'FAILED',
+                error: error.toString()
+            });
+        }
+        
+    }
+    
+    return results;
+}
+
+async function sendTRX(tronWeb, recipient, amount) {
     try {
         const senderAddress = tronWeb.defaultAddress.base58;
-        const initialBalance = await tronWeb.trx.getBalance(senderAddress);
-        
-        console.log('Transaction Details:');
-        console.log('Sender Address:', senderAddress);
-        console.log('Initial Balance:', initialBalance / 1000000, 'TRX');
-        console.log('Recipient Address:', config.receiverAddress);
-        console.log('Amount:', config.amount / 1000000, 'TRX');
+        console.log('\nSending TRX:');
+        console.log('From:', senderAddress);
+        console.log('To:', recipient);
+        console.log('Amount:', amount / 1000000, 'TRX');
 
-        // Send transaction with updated parameters
         const transaction = await tronWeb.trx.sendTransaction(
-            config.receiverAddress,
-            config.amount,
+            recipient,
+            amount,
             {
                 feeLimit: 150000000,
                 shouldPollResponse: true,
@@ -87,33 +158,16 @@ async function sendTransaction(tronWeb) {
             }
         );
 
-        console.log('\nTransaction submitted successfully');
+        console.log('Transaction submitted successfully');
         console.log('Transaction ID:', transaction.txid);
-        console.log('TronScan URL:', `https://shasta.tronscan.org/#/transaction/${transaction.txid}`);
-
-        // Add delay before verification
-        await new Promise(resolve => setTimeout(resolve, 5000));
-
-        // Enhanced transaction verification
-        const txInfo = await tronWeb.trx.getTransactionInfo(transaction.txid);
-        if (!txInfo || !txInfo.id) {
-            console.log('Waiting for transaction confirmation...');
-            await new Promise(resolve => setTimeout(resolve, 3000));
-        }
-
         await waitForConfirmation(tronWeb, transaction.txid);
-        
-        const finalSenderBalance = await tronWeb.trx.getBalance(senderAddress);
-        const finalRecipientBalance = await tronWeb.trx.getBalance(config.receiverAddress);
         
         return {
             success: true,
-            txId: transaction.txid,
-            confirmations: config.confirmations,
-            finalizedStatus: true
+            txId: transaction.txid
         };
     } catch (error) {
-        console.error('Transaction Error:', error.message);
+        console.error('TRX Transfer Error:', error.message);
         throw error;
     }
 }
@@ -121,10 +175,27 @@ async function sendTransaction(tronWeb) {
 async function main() {
     try {
         const tronWeb = initializeTronWeb();
-        const result = await sendTransaction(tronWeb);
-        console.log('Transaction Execution Complete:', result);
+        console.log('TronWeb initialized with network:', config.network);  // Add this line
+        
+        // Mint tokens for all recipients
+        console.log('=== Starting Token Minting Process ===');
+        const mintResults = await mintTokens(tronWeb);
+        console.log('\nMinting Results:', JSON.stringify(mintResults, null, 2));
+
+        // Perform TRX transfer if needed
+        if (process.env.SEND_TRX === 'true') {
+            console.log('\n=== Starting TRX Transfer Process ===');
+            const trxResult = await sendTRX(
+                tronWeb,
+                process.env.RECEIVER_ADDRESS,
+                process.env.AMOUNT || 1000000
+            );
+            console.log('TRX Transfer Result:', trxResult);
+        }
+
+        console.log('\nAll operations completed successfully');
     } catch (error) {
-        console.error('Main Execution Error:', error.message);
+        console.error('Main Execution Error:', error.message || 'Contract interaction failed');  // Add this line
         process.exit(1);
     }
 }
@@ -134,7 +205,8 @@ if (require.main === module) {
 }
 
 module.exports = {
-    sendTransaction,
+    mintTokens,
+    sendTRX,
     initializeTronWeb,
     waitForConfirmation,
     verifyTransaction
