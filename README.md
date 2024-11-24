@@ -26,7 +26,7 @@ A robust implementation for executing and monitoring TRON blockchain transaction
 
 ```bash
 git clone https://github.com/llakterian/FTkn_d.git
-cd FTkn_d
+cd tron-transactions
 ```
 
 2. Install dependencies
