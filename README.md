@@ -1,5 +1,3 @@
-# FTkn_d
-
 # TRON Transaction System
 
 A robust implementation for executing and monitoring TRON blockchain transactions with full confirmation tracking.
