@@ -52,7 +52,7 @@ TRON_API_KEY=your_tron_api_key
 4. Run the transaction script:
 
 ```bash
-node index.js
+node sendTransaction.js
 ```
 
 ## Available networks in the system:
