@@ -39,10 +39,12 @@ npm install tronweb dotenv
 
 ```bash
 PRIVATE_KEY=your_tron_wallet_private_key
-RECEIVER_ADDRESS=recipient_tron_address
-AMOUNT=1000000  # Amount in SUN (1 TRX = 1,000,000 SUN)
+FROM_ADDRESS=origin_tron_address
+RECIPIENT_ADDRESSES=recipient_tron_address1, recipient_tron_address2, recipient_tron_address3, 
+TRX_AMOUNT=100
+USDT_AMOUNT=10
+NETWORK_URL=https://api.shasta.trongrid.io
 TRON_API_KEY=your_tron_api_key
-STUDENT_ADDRESSES=["address1","address2","address3"]
 ```
 
 ## Usage
